@@ -26,7 +26,7 @@ if ('-regen_all' in sys.argv):
 else:
 	force_generate_all = False
 
-# Argument -regen_patch: 
+# Argument -regen_patch:
 if ('-regen_patch' in sys.argv):
 	force_generate_patch = True
 	print("Will only create image patches from already-renamed images")
@@ -60,7 +60,7 @@ elif len(listdir(renamed_image_dir)) != 0 and force_generate_all:
 
 
 
-# We hope to identify clean/dirty images with each dataset. The naming convention 
+# We hope to identify clean/dirty images with each dataset. The naming convention
 # will differ between datasets. The following code takes whatever images there are,
 # and puts them into the same folder called "Renamed_Images" with consistent naming conventions
 if (force_generate_patch == False):
@@ -71,18 +71,18 @@ if (force_generate_patch == False):
 
 		# iterate over each pair of files (assuming that dirty/clean images are adjacent to each other)
 		# and rename them as appropriate
-		dirty_match_re = re.compile('(.+)_mean.JPG')
-		clean_match_re = re.compile('(.+)_Real.JPG')
+		dirty_match_re = re.compile('(.+)_Real.JPG')
+		clean_match_re = re.compile('(.+)_mean.JPG')
 
 		for idx in range(0, len(source_image_files), 2):
-			dirty_image_file = source_image_files[idx]
-			clean_image_file = source_image_files[idx+1]
+			clean_image_file = source_image_files[idx]
+			dirty_image_file = source_image_files[idx+1]
 
 			dirty_match = dirty_match_re.search(dirty_image_file)
 			clean_match = clean_match_re.search(clean_image_file)
 
-			# group 1 captures each image's prefix. This is a sanity check that ensures 
-			# that image names in the dataset are consistent. 
+			# group 1 captures each image's prefix. This is a sanity check that ensures
+			# that image names in the dataset are consistent.
 			assert(dirty_match.group(1) == clean_match.group(1))
 
 			new_dirty_name = "PolyU_" + dirty_match.group(1) + "_dirty.jpg"
@@ -95,14 +95,14 @@ if (force_generate_patch == False):
 	elif current_dataset == "SSID" and len(listdir(renamed_image_dir)) == 0:
 		source_dir = join(current_dataset, "Original_Images_Untouched")
 
-		# within SSID dataset, each scene is divided into four images - two clean, two dirty. 
+		# within SSID dataset, each scene is divided into four images - two clean, two dirty.
 		# We will pick only one of the two image pairs, labelled as 010.
-		# Another complexity is that we have to save the image in jpg instead of png. 
+		# Another complexity is that we have to save the image in jpg instead of png.
 		scene_dirs = [d for d in listdir(source_dir) if (d != "." and d != ".." and isdir(join(source_dir, d)))]
 
 		dirty_match_re = re.compile("([0-9]+)_NOISY_SRGB_010.PNG")
 		clean_match_re = re.compile("([0-9]+)_GT_SRGB_010.PNG")
-		
+
 		for d in scene_dirs:
 			image_dir = join(source_dir, d)
 
@@ -121,7 +121,7 @@ if (force_generate_patch == False):
 						dirty_image = Image.open(join(image_dir, entry)).convert('RGB')
 						dirty_image.save(join(renamed_image_dir, new_dirty_name))
 						renamed_image_files.append(new_dirty_name)
-				
+
 				if found_clean == False:
 					clean_match = clean_match_re.search(entry)
 					if (clean_match):
@@ -135,7 +135,7 @@ if (force_generate_patch == False):
 	elif current_dataset == "NIND" and len(listdir(renamed_image_dir)) == 0:
 		source_dir = join(current_dataset, "Original_Images_Untouched")
 
-		# for NIND dataset, many images have not been compressed and are massive. The processing part 
+		# for NIND dataset, many images have not been compressed and are massive. The processing part
 		# involves ensuring that all images are renamed, compressed, and saved as JPG.
 		# Similar to SSID, each scene is stored in its own folder. However, unlike SSID, rather than clean
 		# and dirty images, this dataset comes with a range of images with different ISO, lower ISO = cleaner.
@@ -182,12 +182,12 @@ if (force_generate_patch == False):
 
 				renamed_image_files.append(new_clean_name)
 				renamed_image_files.append(new_dirty_name)
-		
+
 
 	elif current_dataset == "Custom" and len(listdir(renamed_image_dir)) == 0:
 		source_dir = join(current_dataset, "Original_Images")
 
-		# This dataset only contains original "clean" images. The goal is to 
+		# This dataset only contains original "clean" images. The goal is to
 		# add artificial Gaussian noise to produce "clean/dirty" pairs
 		source_image_files = [f for f in listdir(source_dir) if isfile(join(source_dir, f))]
 
@@ -201,7 +201,7 @@ if (force_generate_patch == False):
 			new_dirty_name = "Custom_{}_dirty.jpg".format(image_idx)
 			renamed_image_files.append(new_dirty_name)
 			renamed_image_files.append(new_clean_name)
-			
+
 			plt.imsave(join(renamed_image_dir, new_clean_name), clean_image)
 			plt.imsave(join(renamed_image_dir, new_dirty_name), dirty_image)
 			image_idx += 1
@@ -211,7 +211,7 @@ if (force_generate_patch == False):
 # It takes in each image, resizes it to 1024 x 1024, and generates 16 patches of 256 x 256 for each image.
 # It then saves these images in the Patches folder
 
-# if force_generate_patch is true, the above loops is skipped and we assume that all images are in /Renamed_Images 
+# if force_generate_patch is true, the above loops is skipped and we assume that all images are in /Renamed_Images
 if (force_generate_patch == True):
 	renamed_image_files = [f for f in listdir(renamed_image_dir) if isfile(join(renamed_image_dir, f))]
 	assert(len(renamed_image_files) != 0)
@@ -230,7 +230,7 @@ if (len(renamed_image_files) > 0):
 
 	for image in renamed_image_files:
 		src_image_path = join(renamed_image_dir, image)
-		
+
 		src_image = plt.imread(src_image_path)
 		image_resized = resize(src_image, (1024, 1024), anti_aliasing = True)
 
@@ -243,12 +243,8 @@ if (len(renamed_image_files) > 0):
 				# Note: splitting on "_" will put dirty and clean patches side by side.
 				#       splitting on "." will put all the clean patches for an image together.
 				split_idx = image.rfind("_")
-				patch_name = image[:split_idx] + "{}{}".format(r, c) + image[split_idx:] 
+				patch_name = image[:split_idx] + "{}{}".format(r, c) + image[split_idx:]
 
 				plt.imsave(join(patches_dir, patch_name), patch)
 
 	print("Success: generated {} patches in directory {}".format(patch_count, patches_dir))
-
-
-
-
