@@ -56,7 +56,9 @@ if __name__ == '__main__':
     k = 0
     for dirty, clean in train_loader:
         # since batch_size = 1, there is only 1 image in `images`
+        # image is 3 * 256 * 256
         image = dirty[0]
+        print(image.shape)
         # place the colour channel at the end, instead of at the beginning
         img = np.transpose(image, [1,2,0])
         plt.subplot(6, 2, k+1)
