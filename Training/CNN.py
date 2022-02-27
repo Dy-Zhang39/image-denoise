@@ -8,7 +8,7 @@ import torch.optim as optim #for gradient descent
 import torchvision
 
 from Training.dataloader import get_dataloaders
-import utility
+from Training import utility
 
 # should add dropout in the future
 class CBDnet(nn.Module):

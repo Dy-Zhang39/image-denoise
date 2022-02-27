@@ -1,7 +1,7 @@
 import os
 import torch
 import numpy as np
-import CNN
+from Training import CNN
 import cv2
 from PIL import Image
 import matplotlib.pyplot as plt # for plotting
