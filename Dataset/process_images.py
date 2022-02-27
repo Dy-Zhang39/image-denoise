@@ -139,7 +139,7 @@ if (force_generate_patch == False):
 		# involves ensuring that all images are renamed, compressed, and saved as JPG.
 		# Similar to SSID, each scene is stored in its own folder. However, unlike SSID, rather than clean
 		# and dirty images, this dataset comes with a range of images with different ISO, lower ISO = cleaner.
-		# We pick out a low-ISO image and a high-ISO image from each set.
+		# We pick output a low-ISO image and a high-ISO image from each set.
 
 		scene_dirs = [d for d in listdir(source_dir) if (d != "." and d != ".." and isdir(join(source_dir, d)))]
 		iso_match_re = re.compile("NIND_(.*)_ISO([0-9]*)\.(jpg|JPG|png|PNG)")
