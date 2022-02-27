@@ -72,7 +72,7 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 
     end_time = time.time()
 
-    utility.data_plotting(iters, losses)
+    utility.loss_plotting(iters, losses)
 
     print("Total time:  % 6.2f s  Time per Epoch: % 6.2f s " % (
     (end_time - start_time), ((end_time - start_time) / num_epochs)))
@@ -81,6 +81,7 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 if __name__ == '__main__':
     use_cuda = True
     num_workers=0
+    batch_size = 256
 
 
     train_loader, val_loader, test_loader = get_dataloaders(train_path="../Dataset/Merged_Dataset/train",
@@ -89,8 +90,6 @@ if __name__ == '__main__':
                                                             batch_size=30)
 
     # proper model
-    batch_size = 256
-
     train_model = False # if we need to train the model
 
     model = utility.load_model(train_model)
@@ -105,5 +104,8 @@ if __name__ == '__main__':
     if (train_model):
         train(model, batch_size=batch_size, num_epochs=10)
 
-    print(utility.PSNR(model))
+    count = utility.save_model_output(model)
+
+    print("The Average PSNR is {}".format(utility.PSNR(model,count)))
+    print("The Average SSIM is {}".format(utility.SSIM(model,count)))
 

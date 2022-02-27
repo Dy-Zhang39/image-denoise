@@ -6,6 +6,7 @@ import cv2
 from PIL import Image
 import matplotlib.pyplot as plt # for plotting
 from Training.dataloader import get_dataloaders
+from skimage.metrics import structural_similarity as compare_ssim #https://ourcodeworld.com/articles/read/991/how-to-calculate-the-structural-similarity-index-ssim-between-two-images-with-python
 
 # this file will contain utility functions
 
@@ -13,7 +14,8 @@ from Training.dataloader import get_dataloaders
 def normalization(imgs, labels):
     return imgs/255, labels/255
 
-def data_plotting(iters, losses):
+
+def loss_plotting(iters, losses):
     # plotting
     plt.title("Training Curve")
     plt.plot(iters, losses, label="Train")
@@ -21,81 +23,98 @@ def data_plotting(iters, losses):
     plt.ylabel("Loss")
     plt.show()
 
-    # plt.title("Training Curve")
-    # plt.plot(iters, train_acc, label="Training")
-    # plt.plot(iters, val_acc, label="Validation")
-    # plt.xlabel("Iterations")
-    # plt.ylabel("Validation Accuracy")
-    # plt.legend(loc='best')
-    # plt.show()
-
-    # train_acc.append(get_accuracy(model, train=train_type))
-    # print("Final Training Accuracy: {}".format(train_acc[-1]))
-    # print("Final Validation Accuracy: {}".format(val_acc[-1]))
-
+'''
+if train_model = true, we will train our CBDnet model
+else we will just used our previous trained model
+'''
 def load_model(train_model):
     path = "model parameter"
     model = CNN.CBDnet()
 
-    if (os.path.exists(path) and train_model == False):
+    if os.path.exists(path) and train_model == False:
         # load exiting model
         state = torch.load(path)
         model.load_state_dict(state)
 
     return model
 
-def PSNR(model):
+
+'''
+save the output of CBDnet model in jpg format under output directory
+return the number of CBDnet output (testset number)
+'''
+def save_model_output(model):
     path = "./output/"
-    _,_,test_loader = get_dataloaders(train_path="../Dataset/Merged_Dataset/train",
-                                  val_path="../Dataset/Merged_Dataset/val",
-                                  test_path="../Dataset/Merged_Dataset/test",
-                                  batch_size=1)
-    #k=1
+    _, _, test_loader = get_dataloaders(train_path="../Dataset/Merged_Dataset/train",
+                                        val_path="../Dataset/Merged_Dataset/val",
+                                        test_path="../Dataset/Merged_Dataset/test",
+                                        batch_size=1)
+    # k=1
     count = 0
     for imgs, labels in iter(test_loader):
         imgs, labels = normalization(imgs, labels)
 
+        # from tensor to numpy img
         out = model(imgs)
         out = out.detach().numpy().squeeze(axis=0)
         labels = labels.detach().numpy().squeeze(axis=0)
-        out = np.transpose(out, [1,2,0])
+        out = np.transpose(out, [1, 2, 0])
         labels = np.transpose(labels, [1, 2, 0])
 
+        # denormalization
         out = (out * 255).astype(np.uint8)
         labels = (labels * 255).astype(np.uint8)
 
         out = np.clip(out, 0, 255)
         labels = np.clip(labels, 0, 255)
 
-        if (not os.path.exists(path)):
+        #dir creation
+        if not os.path.exists(path):
             os.mkdir(path)
-        if (not os.path.exists(os.path.join(path, "out"))):
+        if not os.path.exists(os.path.join(path, "out")):
             os.mkdir(os.path.join(path, "out"))
-        if (not os.path.exists(os.path.join(path,"clean"))):
-            os.mkdir(os.path.join(path,"clean"))
+        if not os.path.exists(os.path.join(path, "clean")):
+            os.mkdir(os.path.join(path, "clean"))
 
+        # numpy img to actual img
         out_image = Image.fromarray(out)
-        out_image.save("{}out/test{}.jpg".format(path,count))
+        out_image.save("{}out/test{}.jpg".format(path, count))
         clean_image = Image.fromarray(labels)
         clean_image.save("{}clean/test{}.jpg".format(path, count))
 
-
-        #plt.subplot(6, 2, k)
-        #plt.imshow(out)
-
-        #plt.subplot(6, 2, k + 1)
-        #plt.imshow(labels)
-        k+=2
         count+=1
 
-        #if (k >= 10): break
+    return count
 
-    plt.show()
-
+'''
+Calculate average PSNR among all testset data
+'''
+def PSNR(model, count):
+    path = "./output/"
     psnr = []
+
     for i in range(count):
         img1 = cv2.imread("{}out/test{}.jpg".format(path,i))
         img2 = cv2.imread("{}clean/test{}.jpg".format(path, i))
         psnr.append(cv2.PSNR(img1, img2))
 
     return sum(psnr)/len(psnr)
+
+'''
+Calculate average SSIM among all testset data
+'''
+def SSIM(model, count):
+    path = "./output/"
+    ssim = []
+    # https://pyimagesearch.com/2017/06/19/image-difference-with-opencv-and-python/
+    for i in range(count):
+        img1 = cv2.imread("{}out/test{}.jpg".format(path, i))
+        img2 = cv2.imread("{}clean/test{}.jpg".format(path, i))
+
+        gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+        gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+        score,_ = compare_ssim(gray1, gray2, full=True)
+        ssim.append(score)
+
+    return sum(ssim)/len(ssim)
