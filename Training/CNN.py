@@ -1,4 +1,5 @@
 import time
+import cv2 #pip3 install opencv-contrib-python
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,7 +10,7 @@ import torchvision
 from Training.dataloader import get_dataloaders
 import utility
 
-
+# should add dropout in the future
 class CBDnet(nn.Module):
     # please implement CBDnet here, this is just return the same size image
     def __init__(self):
@@ -21,39 +22,12 @@ class CBDnet(nn.Module):
         x = F.relu(self.conv1(x)) # (256+2*1-3)/1+1=256
         return x
 
-''' redundent
-def get_accuracy(model, train=0):
-    if train == 0:
-        data_loader = train_loader
-    elif train == 1:
-        data_loader = val_loader
-    else:
-        data_loader = test_loader
 
-    correct = 0
-    total = 0
-    for imgs, labels in data_loader:
+# the training code is adapted from tut 3a, adding data normalization and weight decay to prevent overfitting
+def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, weight_decay = 0.001):
 
-        #############################################
-        # To Enable GPU Usage
-        if use_cuda and torch.cuda.is_available():
-            imgs = imgs.cuda()
-            labels = labels.cuda()
-        #############################################
-
-        output = model(imgs)
-
-        # select index with maximum prediction score
-        pred = output.max(1, keepdim=True)[1]
-        correct += pred.eq(labels.view_as(pred)).sum().item()
-        total += imgs.shape[0]
-    return correct / total
-'''
-
-def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0):
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     iters, losses, train_acc, val_acc = [], [], [], []
 
@@ -62,10 +36,9 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0):
     start_time = time.time()
     for epoch in range(num_epochs):
         mini_b = 0
-        mini_batch_correct = 0
-        Mini_batch_total = 0
         for imgs, labels in iter(train_loader):
             imgs,labels = utility.normalization(imgs, labels)
+
             #############################################
             # To Enable GPU Usage
             if use_cuda and torch.cuda.is_available():
@@ -75,22 +48,17 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0):
 
             #update
             out = model(imgs)  # forward pass
+
             loss = criterion(out, labels)  # compute the total loss
             loss.backward()  # backward pass (compute parameter updates)
             optimizer.step()  # make the updates for each parameter
             optimizer.zero_grad()  # a clean up step for PyTorch
 
-            ##### Mini_batch Accuracy ##### We don't compute accuracy on the whole trainig set in every iteration!
-            #pred = out.max(1, keepdim=True)[1]
-            #mini_batch_correct = pred.eq(labels.view_as(pred)).sum().item()
-            #Mini_batch_total = imgs.shape[0]
-            #train_acc.append((mini_batch_correct / Mini_batch_total))
-            ###########################
 
             # save the current training information
             iters.append(n)
             losses.append(float(loss) / batch_size)  # compute *average* loss
-            #val_acc.append(get_accuracy(model, train=train_type + 1))  # compute validation accuracy
+
             n += 1
             mini_b += 1
             print("Iteration: ", n,
@@ -98,6 +66,9 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0):
                   '%', "Time Elapsed: % 6.2f s " % (time.time() - start_time))
 
         print("Epoch %d Finished. " % epoch, "Time per Epoch: % 6.2f s " % ((time.time() - start_time) / (epoch + 1)))
+
+    path = "model parameter"
+    torch.save(model.state_dict(), path)
 
     end_time = time.time()
 
@@ -111,6 +82,7 @@ if __name__ == '__main__':
     use_cuda = True
     num_workers=0
 
+
     train_loader, val_loader, test_loader = get_dataloaders(train_path="../Dataset/Merged_Dataset/train",
                                                             val_path="../Dataset/Merged_Dataset/val",
                                                             test_path="../Dataset/Merged_Dataset/test",
@@ -118,7 +90,10 @@ if __name__ == '__main__':
 
     # proper model
     batch_size = 256
-    model = CBDnet()
+
+    train_model = False # if we need to train the model
+
+    model = utility.load_model(train_model)
 
     if use_cuda and torch.cuda.is_available():
         model.cuda()
@@ -126,4 +101,9 @@ if __name__ == '__main__':
     else:
         print('CUDA is not available.  Training on CPU ...')
 
-    train(model, batch_size=batch_size, num_epochs=10)
+
+    if (train_model):
+        train(model, batch_size=batch_size, num_epochs=10)
+
+    print(utility.PSNR(model))
+
