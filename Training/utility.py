@@ -50,7 +50,7 @@ def PSNR(model):
                                   val_path="../Dataset/Merged_Dataset/val",
                                   test_path="../Dataset/Merged_Dataset/test",
                                   batch_size=1)
-    k=1
+    #k=1
     count = 0
     for imgs, labels in iter(test_loader):
         imgs, labels = normalization(imgs, labels)
