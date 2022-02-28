@@ -104,7 +104,7 @@ if __name__ == '__main__':
     if (train_model):
         train(model, batch_size=batch_size, num_epochs=10)
 
-    count = utility.save_model_output(model)
+    count = utility.save_model_output(model, use_cuda)
 
     print("The Average PSNR is {}".format(utility.PSNR(model,count)))
     print("The Average SSIM is {}".format(utility.SSIM(model,count)))

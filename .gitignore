@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#psnr
+/Training/output/out/*.jpg
+/Training/output/clean/*.jpg
+/Training/output
+

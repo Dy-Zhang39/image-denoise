@@ -43,7 +43,7 @@ def load_model(train_model):
 save the output of CBDnet model in jpg format under output directory
 return the number of CBDnet output (testset number)
 '''
-def save_model_output(model):
+def save_model_output(model, use_cuda):
     path = "./output/"
     _, _, test_loader = get_dataloaders(train_path="../Dataset/Merged_Dataset/train",
                                         val_path="../Dataset/Merged_Dataset/val",
@@ -54,10 +54,17 @@ def save_model_output(model):
     for imgs, labels in iter(test_loader):
         imgs, labels = normalization(imgs, labels)
 
+        #############################################
+        # To Enable GPU Usage
+        if use_cuda and torch.cuda.is_available():
+            imgs = imgs.cuda()
+            labels = labels.cuda()
+        #############################################
+
         # from tensor to numpy img
         out = model(imgs)
-        out = out.detach().numpy().squeeze(axis=0)
-        labels = labels.detach().numpy().squeeze(axis=0)
+        out = out.cpu().detach().numpy().squeeze(axis=0)
+        labels = labels.cpu().detach().numpy().squeeze(axis=0)
         out = np.transpose(out, [1, 2, 0])
         labels = np.transpose(labels, [1, 2, 0])
 
