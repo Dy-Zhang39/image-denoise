@@ -106,6 +106,11 @@ if __name__ == '__main__':
 
     count = utility.save_model_output(model, use_cuda)
 
-    print("The Average PSNR is {}".format(utility.PSNR(model,count)))
-    print("The Average SSIM is {}".format(utility.SSIM(model,count)))
+    print("The Average PSNR between model prediction and clean is {}".format(utility.PSNR(model,count,psnr_predict_clean= True)))
+    print("The Average SSIM between model prediction and clean is {}".format(utility.SSIM(model,count,psnr_predict_clean= True)))
+
+    print("The Average PSNR has improved by {}".format(
+        utility.PSNR(model, count, psnr_predict_clean=True) - utility.PSNR(model, count, psnr_predict_clean=False)))
+    print("The Average SSIM has improved by {}".format(
+        utility.SSIM(model, count, psnr_predict_clean=True) - utility.SSIM(model, count, psnr_predict_clean=False)))
 

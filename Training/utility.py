@@ -38,6 +38,13 @@ def load_model(train_model):
 
     return model
 
+def tensor_to_img(tensor):
+    tensor = tensor.cpu().detach().numpy().squeeze(axis=0)
+    tensor = np.transpose(tensor, [1, 2, 0])
+    tensor = (tensor * 255).astype(np.uint8)
+    tensor = np.clip(tensor, 0, 255)
+
+    return Image.fromarray(tensor)
 
 '''
 save the output of CBDnet model in jpg format under output directory
@@ -63,17 +70,10 @@ def save_model_output(model, use_cuda):
 
         # from tensor to numpy img
         out = model(imgs)
-        out = out.cpu().detach().numpy().squeeze(axis=0)
-        labels = labels.cpu().detach().numpy().squeeze(axis=0)
-        out = np.transpose(out, [1, 2, 0])
-        labels = np.transpose(labels, [1, 2, 0])
 
-        # denormalization
-        out = (out * 255).astype(np.uint8)
-        labels = (labels * 255).astype(np.uint8)
-
-        out = np.clip(out, 0, 255)
-        labels = np.clip(labels, 0, 255)
+        imgs = tensor_to_img(imgs)
+        out = tensor_to_img(out)
+        labels = tensor_to_img(labels)
 
         #dir creation
         if not os.path.exists(path):
@@ -82,12 +82,13 @@ def save_model_output(model, use_cuda):
             os.mkdir(os.path.join(path, "out"))
         if not os.path.exists(os.path.join(path, "clean")):
             os.mkdir(os.path.join(path, "clean"))
+        if not os.path.exists(os.path.join(path, "dirty")):
+            os.mkdir(os.path.join(path, "dirty"))
 
         # numpy img to actual img
-        out_image = Image.fromarray(out)
-        out_image.save("{}out/test{}.jpg".format(path, count))
-        clean_image = Image.fromarray(labels)
-        clean_image.save("{}clean/test{}.jpg".format(path, count))
+        imgs.save("{}dirty/test{}.jpg".format(path, count))
+        out.save("{}out/test{}.jpg".format(path, count))
+        labels.save("{}clean/test{}.jpg".format(path, count))
 
         count+=1
 
@@ -95,13 +96,18 @@ def save_model_output(model, use_cuda):
 
 '''
 Calculate average PSNR among all testset data
+psnr_predict_clean = true: its the PSNR between the prediction of our model and clean img
+psnr_predict_clean = false: its the PSNR between the dirty and clean img
 '''
-def PSNR(model, count):
+def PSNR(model, count, psnr_predict_clean):
     path = "./output/"
     psnr = []
 
     for i in range(count):
-        img1 = cv2.imread("{}out/test{}.jpg".format(path,i))
+        if (psnr_predict_clean):
+            img1 = cv2.imread("{}out/test{}.jpg".format(path,i))
+        else:
+            img1 = cv2.imread("{}dirty/test{}.jpg".format(path,i))
         img2 = cv2.imread("{}clean/test{}.jpg".format(path, i))
         psnr.append(cv2.PSNR(img1, img2))
 
@@ -109,13 +115,18 @@ def PSNR(model, count):
 
 '''
 Calculate average SSIM among all testset data
+psnr_predict_clean = true: its the PSNR between the prediction of our model and clean img
+psnr_predict_clean = false: its the PSNR between the dirty and clean img
 '''
-def SSIM(model, count):
+def SSIM(model, count, psnr_predict_clean):
     path = "./output/"
     ssim = []
     # https://pyimagesearch.com/2017/06/19/image-difference-with-opencv-and-python/
     for i in range(count):
-        img1 = cv2.imread("{}out/test{}.jpg".format(path, i))
+        if (psnr_predict_clean):
+            img1 = cv2.imread("{}out/test{}.jpg".format(path, i))
+        else:
+            img1 = cv2.imread("{}dirty/test{}.jpg".format(path, i))
         img2 = cv2.imread("{}clean/test{}.jpg".format(path, i))
 
         gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
