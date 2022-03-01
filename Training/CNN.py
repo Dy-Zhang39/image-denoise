@@ -203,8 +203,8 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 
         print("Epoch %d Finished. " % epoch, "Time per Epoch: % 6.2f s " % ((time.time() - start_time) / (epoch + 1)))
 
-    path = "model parameter"
-    torch.save(model.state_dict(), path)
+    path = "model_parameter"
+    torch.save(model.state_dict(), path + "lr_{} batch_size_{} weight_decay{}".format(learning_rate, batch_size, weight_decay))
 
     end_time = time.time()
 
@@ -218,6 +218,8 @@ if __name__ == '__main__':
     use_cuda = True
     num_workers=0
     batch_size = 256
+    weight_decay = 0.001
+    learning_rate = 0.01
 
 
     train_loader, val_loader, test_loader = get_dataloaders(train_path="../Dataset/Merged_Dataset/train",
@@ -228,7 +230,7 @@ if __name__ == '__main__':
     # proper model
     train_model = False # if we need to train the model
 
-    model = utility.load_model(train_model)
+    model = utility.load_model(train_model, learning_rate, batch_size, weight_decay)
 
     if use_cuda and torch.cuda.is_available():
         model.cuda()
@@ -237,8 +239,9 @@ if __name__ == '__main__':
         print('CUDA is not available.  Training on CPU ...')
 
 
+
     if (train_model):
-        train(model, batch_size=batch_size, num_epochs=10)
+        train(model, batch_size=batch_size, num_epochs=10, weight_decay= weight_decay, learning_rate= learning_rate)
 
     count = utility.save_model_output(model, use_cuda)
 
