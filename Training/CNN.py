@@ -34,7 +34,7 @@ class FCN(nn.Module):  # CNN_E
     def __init__(self):
         super(FCN, self).__init__()
         self.fcn = nn.Sequential(           #5 CNN with channel size all set to 32
-            nn.Conv2d(3, 32, 3, padding=1),     #conv2d ref: https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html 
+            nn.Conv2d(3, 32, 3, padding=1),     #conv2d ref: https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 32, 3, padding=1),
             nn.ReLU(inplace=True),
@@ -49,6 +49,49 @@ class FCN(nn.Module):  # CNN_E
     def forward(self, x):
         return self.fcn(x)
 
+
+#this class implements a signal conv2d layer with relu activation
+class single_conv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(single_conv, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, padding=1),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        return self.conv(x)
+
+#this class doing the transpose convolution (can be view as deconvolution) visiualizetion of the opration can be
+#found here: https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md
+#ConvTranspose2d ref: https://pytorch.org/docs/stable/generated/torch.nn.ConvTranspose2d.html
+class up(nn.Module):
+    def __init__(self, in_ch):
+        super(up, self).__init__()
+        self.up = nn.ConvTranspose2d(in_ch, in_ch // 2, 2, stride=2)
+
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+
+        # input is CHW, size the output
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+
+        x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
+                        diffY // 2, diffY - diffY // 2))
+
+        x = x2 + x1
+        return x
+
+#final unet ouput layer
+class outconv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(outconv, self).__init__()
+        self.conv = nn.Conv2d(in_ch, out_ch, 1)
+
+    def forward(self, x):
+        x = self.conv(x)
+        return x
 ##########################################################################################
 # the training code is adapted from tut 3a, adding data normalization and weight decay to prevent overfitting
 def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, weight_decay = 0.001):
