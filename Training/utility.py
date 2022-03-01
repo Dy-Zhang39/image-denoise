@@ -27,12 +27,12 @@ def loss_plotting(iters, losses):
 if train_model = true, we will train our CBDnet model
 else we will just used our previous trained model
 '''
-def load_model(train_model):
-    path = "model parameter"
+def load_model(train_model, learning_rate, batch_size, weight_decay):
+    path = "model_parameter"+ "lr_{} batch_size_{} weight_decay{}".format(learning_rate, batch_size, weight_decay)
     model = CNN.CBDnet()
 
     if os.path.exists(path) and train_model == False:
-        # load exiting model
+        print("loading exiting model")
         state = torch.load(path)
         model.load_state_dict(state)
 

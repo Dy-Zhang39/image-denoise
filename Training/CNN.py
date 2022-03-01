@@ -11,13 +11,14 @@ from Training.dataloader import get_dataloaders
 from Training import utility
 ##########################################################################################
 # should add dropout in the future
+# The following code is adapted from the following website: https://github.dev/IDKiro/CBDNet-pytorch
 class CBDnet(nn.Module):
     # please implement CBDnet here, this is just return the same size image
     def __init__(self):
         super(CBDnet, self).__init__()
         #input image is 3 * 256 * 256
         self.fcn = FCN()            #CNN_E: takes an noisy observtion y and output esitmate the noise level map
-        self.unet = UNet()          #
+        self.unet = UNet()          #UNet: performs image denoise
 
         #daniel#self.conv1 = nn.Conv2d(3, 3, 3, padding=1)
 
@@ -25,11 +26,11 @@ class CBDnet(nn.Module):
         noise_level = self.fcn(x)           #get the noise level map of input x
         concat_img = torch.cat([x, noise_level], dim=1)         #combine the two tensor together as an inout to unet
         out = self.unet(concat_img) + x     #taking both noisy image and noise level map as input is helpful in generalizing the learned model to images beyond the noise model
-        return noise_level, out
+        return out
         #daniel#x = F.relu(self.conv1(x)) # (256+2*1-3)/1+1=256
         #return x
 
-
+#FCN class estimate noise level of the input signal
 class FCN(nn.Module):  # CNN_E
     def __init__(self):
         super(FCN, self).__init__()
@@ -49,7 +50,69 @@ class FCN(nn.Module):  # CNN_E
     def forward(self, x):
         return self.fcn(x)
 
+#UNet perform denoise through three levels
+class UNet(nn.Module):
+    def __init__(self):
+        super(UNet, self).__init__()
 
+        self.inc = nn.Sequential(
+            single_conv(6, 64),
+            single_conv(64, 64)
+        )
+
+        self.down1 = nn.AvgPool2d(2)
+        self.conv1 = nn.Sequential(
+            single_conv(64, 128),
+            single_conv(128, 128),
+            single_conv(128, 128)
+        )
+
+        self.down2 = nn.AvgPool2d(2)
+        self.conv2 = nn.Sequential(
+            single_conv(128, 256),
+            single_conv(256, 256),
+            single_conv(256, 256),
+            single_conv(256, 256),
+            single_conv(256, 256),
+            single_conv(256, 256)
+        )
+
+        self.up1 = up(256)
+        self.conv3 = nn.Sequential(
+            single_conv(128, 128),
+            single_conv(128, 128),
+            single_conv(128, 128)
+        )
+
+        self.up2 = up(128)
+        self.conv4 = nn.Sequential(
+            single_conv(64, 64),
+            single_conv(64, 64)
+        )
+
+        self.outc = outconv(64, 3)
+
+    def forward(self, x):
+        inx = self.inc(x)       #takes 6 input channels and ouput 64 channel
+
+        down1 = self.down1(inx)     #average pooling with filter size 2, stride 1
+        conv1 = self.conv1(down1)   #takes 64 input channels and ouput 128 channel
+
+        down2 = self.down2(conv1)   #average pooling with filter size 2, stride 1
+        conv2 = self.conv2(down2)   #takes 128 input channels and ouput 256 channel
+
+        up1 = self.up1(conv2, conv1)    #decovolution, 256 input channel, 128 output channel
+        conv3 = self.conv3(up1)         #takes 128 input channels and ouput 128 channel
+
+        up2 = self.up2(conv3, inx)      #decovolution, 128 input channel, 64 output channel
+        conv4 = self.conv4(up2)         #takes 64 input channels and ouput 64 channel
+
+        out = self.outc(conv4)          #takes 64 input channels and ouput 3 channel
+        return out
+
+
+##########################################################################################
+#Below are the hpler function for UNet
 #this class implements a signal conv2d layer with relu activation
 class single_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -93,6 +156,9 @@ class outconv(nn.Module):
         x = self.conv(x)
         return x
 ##########################################################################################
+
+
+
 # the training code is adapted from tut 3a, adding data normalization and weight decay to prevent overfitting
 def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, weight_decay = 0.001):
 
@@ -117,7 +183,10 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
             #############################################
 
             #update
-            out = model(imgs)  # forward pass
+            _,out = model(imgs)  # forward pass
+
+            #print(imgs.shape)
+            #print(labels.shape)
 
             loss = criterion(out, labels)  # compute the total loss
             loss.backward()  # backward pass (compute parameter updates)
@@ -137,8 +206,8 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 
         print("Epoch %d Finished. " % epoch, "Time per Epoch: % 6.2f s " % ((time.time() - start_time) / (epoch + 1)))
 
-    path = "model parameter"
-    torch.save(model.state_dict(), path)
+    path = "model_parameter"
+    torch.save(model.state_dict(), path + "lr_{} batch_size_{} weight_decay{}".format(learning_rate, batch_size, weight_decay))
 
     end_time = time.time()
 
@@ -151,18 +220,21 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 if __name__ == '__main__':
     use_cuda = True
     num_workers=0
-    batch_size = 256
+    batch_size = 16
+    weight_decay = 0.001
+    learning_rate = 0.01
+
 
 
     train_loader, val_loader, test_loader = get_dataloaders(train_path="../Dataset/Merged_Dataset/train",
                                                             val_path="../Dataset/Merged_Dataset/val",
                                                             test_path="../Dataset/Merged_Dataset/test",
-                                                            batch_size=30)
+                                                            batch_size=batch_size)
 
     # proper model
-    train_model = False # if we need to train the model
+    train_model = True # if we need to train the model
 
-    model = utility.load_model(train_model)
+    model = utility.load_model(train_model, learning_rate, batch_size, weight_decay)
 
     if use_cuda and torch.cuda.is_available():
         model.cuda()
@@ -171,8 +243,9 @@ if __name__ == '__main__':
         print('CUDA is not available.  Training on CPU ...')
 
 
+
     if (train_model):
-        train(model, batch_size=batch_size, num_epochs=10)
+        train(model, batch_size=batch_size, num_epochs=10, weight_decay= weight_decay, learning_rate= learning_rate)
 
     count = utility.save_model_output(model, use_cuda)
 
