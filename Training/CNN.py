@@ -26,7 +26,7 @@ class CBDnet(nn.Module):
         noise_level = self.fcn(x)           #get the noise level map of input x
         concat_img = torch.cat([x, noise_level], dim=1)         #combine the two tensor together as an inout to unet
         out = self.unet(concat_img) + x     #taking both noisy image and noise level map as input is helpful in generalizing the learned model to images beyond the noise model
-        return noise_level, out
+        return out
         #daniel#x = F.relu(self.conv1(x)) # (256+2*1-3)/1+1=256
         #return x
 
