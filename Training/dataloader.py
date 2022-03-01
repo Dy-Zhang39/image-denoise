@@ -10,6 +10,7 @@ from torchvision.io import read_image
 
 class DENOISING_DATASET(torch.utils.data.Dataset):
     def __init__ (self, image_dir):
+        #256x256
         self.clean_path = os.path.join(image_dir, "clean")
         self.dirty_path = os.path.join(image_dir, "dirty")
         self.clean_image_list = [f for f in os.listdir(self.clean_path) if

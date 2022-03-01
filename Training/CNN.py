@@ -9,20 +9,47 @@ import torchvision
 
 from Training.dataloader import get_dataloaders
 from Training import utility
-
+##########################################################################################
 # should add dropout in the future
 class CBDnet(nn.Module):
     # please implement CBDnet here, this is just return the same size image
     def __init__(self):
         super(CBDnet, self).__init__()
         #input image is 3 * 256 * 256
-        self.conv1 = nn.Conv2d(3, 3, 3, padding=1)
+        self.fcn = FCN()            #CNN_E: takes an noisy observtion y and output esitmate the noise level map
+        self.unet = UNet()          #
+
+        #daniel#self.conv1 = nn.Conv2d(3, 3, 3, padding=1)
 
     def forward(self, x):
-        x = F.relu(self.conv1(x)) # (256+2*1-3)/1+1=256
-        return x
+        noise_level = self.fcn(x)           #get the noise level map of input x
+        concat_img = torch.cat([x, noise_level], dim=1)         #combine the two tensor together as an inout to unet
+        out = self.unet(concat_img) + x     #taking both noisy image and noise level map as input is helpful in generalizing the learned model to images beyond the noise model
+        return noise_level, out
+        #daniel#x = F.relu(self.conv1(x)) # (256+2*1-3)/1+1=256
+        #return x
 
 
+class FCN(nn.Module):  # CNN_E
+    def __init__(self):
+        super(FCN, self).__init__()
+        self.fcn = nn.Sequential(           #5 CNN with channel size all set to 32
+            nn.Conv2d(3, 32, 3, padding=1),     #conv2d ref: https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html 
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 3, 3, padding=1),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        return self.fcn(x)
+
+##########################################################################################
 # the training code is adapted from tut 3a, adding data normalization and weight decay to prevent overfitting
 def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, weight_decay = 0.001):
 
