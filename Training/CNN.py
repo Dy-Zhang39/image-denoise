@@ -183,7 +183,10 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
             #############################################
 
             #update
-            out = model(imgs)  # forward pass
+            _,out = model(imgs)  # forward pass
+
+            #print(imgs.shape)
+            #print(labels.shape)
 
             loss = criterion(out, labels)  # compute the total loss
             loss.backward()  # backward pass (compute parameter updates)
@@ -217,18 +220,19 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 if __name__ == '__main__':
     use_cuda = True
     num_workers=0
-    batch_size = 256
+    batch_size = 16
     weight_decay = 0.001
     learning_rate = 0.01
+
 
 
     train_loader, val_loader, test_loader = get_dataloaders(train_path="../Dataset/Merged_Dataset/train",
                                                             val_path="../Dataset/Merged_Dataset/val",
                                                             test_path="../Dataset/Merged_Dataset/test",
-                                                            batch_size=30)
+                                                            batch_size=batch_size)
 
     # proper model
-    train_model = False # if we need to train the model
+    train_model = True # if we need to train the model
 
     model = utility.load_model(train_model, learning_rate, batch_size, weight_decay)
 
