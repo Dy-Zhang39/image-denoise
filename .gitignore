@@ -133,3 +133,4 @@ dmypy.json
 /Training/output/clean/*.jpg
 /Training/output
 
+.idea
