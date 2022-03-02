@@ -71,6 +71,7 @@ def save_model_output(model, use_cuda):
         # from tensor to numpy img
         out = model(imgs)
 
+
         imgs = tensor_to_img(imgs)
         out = tensor_to_img(out)
         labels = tensor_to_img(labels)

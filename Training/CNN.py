@@ -183,7 +183,7 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
             #############################################
 
             #update
-            _,out = model(imgs)  # forward pass
+            out = model(imgs)  # forward pass
 
             #print(imgs.shape)
             #print(labels.shape)
