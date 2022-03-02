@@ -220,9 +220,10 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 if __name__ == '__main__':
     use_cuda = True
     num_workers=0
-    batch_size = 16
+    batch_size = 24
     weight_decay = 0.001
-    learning_rate = 1E-5
+    num_epochs=20
+    learning_rate = 7e-6
 
 
 
@@ -245,7 +246,7 @@ if __name__ == '__main__':
 
 
     if (train_model):
-        train(model, batch_size=batch_size, num_epochs=10, weight_decay= weight_decay, learning_rate= learning_rate)
+        train(model, batch_size=batch_size, num_epochs=num_epochs, weight_decay= weight_decay, learning_rate= learning_rate)
 
     count = utility.save_model_output(model, use_cuda)
 
