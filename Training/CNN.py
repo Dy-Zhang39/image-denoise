@@ -222,7 +222,7 @@ if __name__ == '__main__':
     num_workers=0
     batch_size = 16
     weight_decay = 0.001
-    learning_rate = 0.01
+    learning_rate = 1E-5
 
 
 
