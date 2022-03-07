@@ -7,8 +7,8 @@ import torch.nn.functional as F
 import torch.optim as optim #for gradient descent
 import torchvision
 
-from Training.dataloader import get_dataloaders
-from Training import utility
+from dataloader import get_dataloaders
+import utility
 ##########################################################################################
 # should add dropout in the future
 # The following code is adapted from the following website: https://github.dev/IDKiro/CBDNet-pytorch
@@ -292,4 +292,3 @@ if __name__ == '__main__':
         utility.PSNR(model, count, psnr_predict_clean=True) - utility.PSNR(model, count, psnr_predict_clean=False)))
     print("The Average SSIM has improved by {}".format(
         utility.SSIM(model, count, psnr_predict_clean=True) - utility.SSIM(model, count, psnr_predict_clean=False)))
-
