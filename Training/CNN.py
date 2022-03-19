@@ -7,8 +7,8 @@ import torch.nn.functional as F
 import torch.optim as optim #for gradient descent
 import torchvision
 
-from Training.dataloader import get_dataloaders
-from Training import utility
+from dataloader import get_dataloaders
+import utility
 ##########################################################################################
 # should add dropout in the future
 # The following code is adapted from the following website: https://github.dev/IDKiro/CBDNet-pytorch
@@ -36,6 +36,10 @@ class FCN(nn.Module):  # CNN_E
         super(FCN, self).__init__()
         self.fcn = nn.Sequential(           #5 CNN with channel size all set to 32
             nn.Conv2d(3, 32, 3, padding=1),     #conv2d ref: https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, 3, padding=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(32, 32, 3, padding=1),
             nn.ReLU(inplace=True),
@@ -77,15 +81,40 @@ class UNet(nn.Module):
             single_conv(256, 256)
         )
 
-        self.up1 = up(256)
+        self.down3 = nn.AvgPool2d(2)
         self.conv3 = nn.Sequential(
+            single_conv(256, 512),
+            single_conv(512, 512),
+            single_conv(512, 512),
+            single_conv(512, 512),
+            single_conv(512, 512),
+            single_conv(512, 512),
+            single_conv(512, 512),
+            single_conv(512, 512),
+            single_conv(512, 512)
+        )
+
+        self.up1 = up(512)
+        self.conv4 = nn.Sequential(
+            single_conv(256, 256),
+            single_conv(256, 256),
+            single_conv(256, 256),
+            single_conv(256, 256),
+            single_conv(256, 256),
+            single_conv(256, 256)
+
+        )
+
+
+        self.up2 = up(256)
+        self.conv5 = nn.Sequential(
             single_conv(128, 128),
             single_conv(128, 128),
             single_conv(128, 128)
         )
 
-        self.up2 = up(128)
-        self.conv4 = nn.Sequential(
+        self.up3 = up(128)
+        self.conv6 = nn.Sequential(
             single_conv(64, 64),
             single_conv(64, 64)
         )
@@ -101,13 +130,19 @@ class UNet(nn.Module):
         down2 = self.down2(conv1)   #average pooling with filter size 2, stride 1
         conv2 = self.conv2(down2)   #takes 128 input channels and ouput 256 channel
 
-        up1 = self.up1(conv2, conv1)    #decovolution, 256 input channel, 128 output channel
-        conv3 = self.conv3(up1)         #takes 128 input channels and ouput 128 channel
+        down3 = self.down3(conv2)   #average pooling with filter size 2, stride 1
+        conv3 = self.conv3(down3)   #takes 256 input channels and ouput 512 channel
 
-        up2 = self.up2(conv3, inx)      #decovolution, 128 input channel, 64 output channel
-        conv4 = self.conv4(up2)         #takes 64 input channels and ouput 64 channel
+        up1 = self.up1(conv3, conv2)    #decovolution, 512 input channel, 256 output channel
+        conv4 = self.conv4(up1)         #takes 256 input channels and ouput 256 channel
 
-        out = self.outc(conv4)          #takes 64 input channels and ouput 3 channel
+        up2 = self.up2(conv4, conv1)      #decovolution, 256 input channel, 128 output channel
+        conv5 = self.conv5(up2)         #takes 128 input channels and ouput 128 channel
+
+        up3 = self.up2(conv5, inx)  # decovolution, 128 input channel, 64 output channel
+        conv6 = self.conv6(up3)  # takes 64 input channels and ouput 64 channel
+
+        out = self.outc(conv6)          #takes 64 input channels and ouput 3 channel
         return out
 
 
@@ -220,9 +255,10 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 if __name__ == '__main__':
     use_cuda = True
     num_workers=0
-    batch_size = 16
+    batch_size = 24
     weight_decay = 0.001
-    learning_rate = 1E-5
+    num_epochs=20
+    learning_rate = 7e-6
 
 
 
@@ -245,7 +281,7 @@ if __name__ == '__main__':
 
 
     if (train_model):
-        train(model, batch_size=batch_size, num_epochs=10, weight_decay= weight_decay, learning_rate= learning_rate)
+        train(model, batch_size=batch_size, num_epochs=num_epochs, weight_decay= weight_decay, learning_rate= learning_rate)
 
     count = utility.save_model_output(model, use_cuda)
 
@@ -256,4 +292,3 @@ if __name__ == '__main__':
         utility.PSNR(model, count, psnr_predict_clean=True) - utility.PSNR(model, count, psnr_predict_clean=False)))
     print("The Average SSIM has improved by {}".format(
         utility.SSIM(model, count, psnr_predict_clean=True) - utility.SSIM(model, count, psnr_predict_clean=False)))
-

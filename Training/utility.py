@@ -1,11 +1,11 @@
 import os
 import torch
 import numpy as np
-from Training import CNN
+import CNN
 import cv2
 from PIL import Image
 import matplotlib.pyplot as plt # for plotting
-from Training.dataloader import get_dataloaders
+from dataloader import get_dataloaders
 from skimage.metrics import structural_similarity as compare_ssim #https://ourcodeworld.com/articles/read/991/how-to-calculate-the-structural-similarity-index-ssim-between-two-images-with-python
 
 # this file will contain utility functions

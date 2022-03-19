@@ -11,8 +11,11 @@ from torchvision import datasets, models, transforms
 from torch.utils.data.sampler import SubsetRandomSampler
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-from Training import utility
-from Training.dataloader import get_dataloaders
+
+import sys
+sys.path.append("../Training")
+import utility
+from dataloader import get_dataloaders
 
 
 class Autoencoder_cnn(nn.Module):
@@ -184,4 +187,3 @@ if __name__ == '__main__':
 
     print("Baseline Model PSNR is {}".format(utility.PSNR(model, count, False)))
     print("Baseline Model SSIM is {}".format(utility.SSIM(model, count, False)))
-
