@@ -132,5 +132,6 @@ dmypy.json
 /Training/output/out/*.jpg
 /Training/output/clean/*.jpg
 /Training/output
-
+/Baseline/output
+/Baseline/demo
 .idea
