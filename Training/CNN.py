@@ -24,8 +24,8 @@ class CBDnet_0(nn.Module):
     def __init__(self):
         super(CBDnet_0, self).__init__()
         #input image is 3 * 256 * 256
-        self.fcn = FCN_1()            #CNN_E: takes an noisy observtion y and output esitmate the noise level map
-        self.unet = UNet_1()          #UNet: performs image denoise
+        self.fcn = FCN_0()            #CNN_E: takes an noisy observtion y and output esitmate the noise level map
+        self.unet = UNet_0()          #UNet: performs image denoise
 
         #daniel#self.conv1 = nn.Conv2d(3, 3, 3, padding=1)
 
@@ -233,8 +233,8 @@ class CBDnet_2(nn.Module):
     def __init__(self):
         super(CBDnet_2, self).__init__()
         # input image is 3 * 256 * 256
-        self.fcn = FCN()  # CNN_E: takes an noisy observtion y and output esitmate the noise level map
-        self.unet = UNet()  # UNet: performs image denoise
+        self.fcn = FCN_2()  # CNN_E: takes an noisy observtion y and output esitmate the noise level map
+        self.unet = UNet_2()  # UNet: performs image denoise
 
         # daniel#self.conv1 = nn.Conv2d(3, 3, 3, padding=1)
 
