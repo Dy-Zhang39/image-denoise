@@ -8,8 +8,8 @@ import torch.nn.functional as F
 import torch.optim as optim  # for gradient descent
 import torchvision
 
-from Training.dataloader import get_dataloaders
-from Training import utility
+from dataloader import get_dataloaders
+import utility
 
 
 ##########################################################################################
@@ -274,10 +274,11 @@ if __name__ == '__main__':
             count = utility.save_model_output(model, use_cuda)
 
             psnr_new = utility.PSNR(model, count, psnr_predict_clean=True)
+            ssim_new = utility.SSIM(model, count, psnr_predict_clean=True)
 
             print("The Average PSNR between model prediction and clean is {}".format(psnr_new))
-            print("The Average SSIM between model prediction and clean is {}".format(
-                utility.SSIM(model, count, psnr_predict_clean=True)))
+            print("The Average SSIM between model prediction and clean is {}".format(ssim_new
+                ))
 
             print("The Average PSNR has improved by {}".format(
                 utility.PSNR(model, count, psnr_predict_clean=True) - utility.PSNR(model, count,
@@ -293,7 +294,7 @@ if __name__ == '__main__':
 
                 with open("log.txt",'w') as fd:
                     fd.write("The current best hyperparameters are: {} {} {}\n".format(best_batch_size,best_learning_rate,best_weight_decay))
-
+                    fd.write("PSNR is {}, SSIM is {}\n".format(psnr_new, ssim_new))
                 if (count % 3 == 0):
                     batch_size -= delta_batch_size
                 elif (count % 3 == 1):
