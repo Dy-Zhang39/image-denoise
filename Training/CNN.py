@@ -375,7 +375,7 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 
     end_time = time.time()
 
-    utility.loss_plotting(iters, losses)
+    #utility.loss_plotting(iters, losses)
 
     print("Total time:  % 6.2f s  Time per Epoch: % 6.2f s " % (
         (end_time - start_time), ((end_time - start_time) / num_epochs)))
@@ -385,7 +385,7 @@ if __name__ == '__main__':
     use_cuda = True
     num_workers = 0
     weight_decay = 0.001
-    num_epochs = 1
+    num_epochs = 20
     learning_rate = 7e-6
     batch_size = 24
 
@@ -399,7 +399,7 @@ if __name__ == '__main__':
 
     count = 0
     iteration = 5
-    psnr_prev = 10000.
+    psnr_prev = 0.
 
 
 
@@ -442,12 +442,13 @@ if __name__ == '__main__':
                 utility.SSIM(model, count, psnr_predict_clean=True) - utility.SSIM(model, count,
                                                                                    psnr_predict_clean=False)))
 
-            if (psnr_new < psnr_prev):
+            if (psnr_new > psnr_prev):
                 best_batch_size = batch_size
                 best_learning_rate = learning_rate
                 best_weight_decay = weight_decay
 
-                with open("log.txt",'w') as fd:
+                with open("log.txt",'a') as fd:
+                    print("writing to file")
                     fd.write("The current best hyperparameters are: {} {} {}\n".format(best_batch_size,best_learning_rate,best_weight_decay))
                     fd.write("PSNR is {}, SSIM is {}\n".format(psnr_new, ssim_new))
                 if (count % 3 == 0):
