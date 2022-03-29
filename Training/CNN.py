@@ -444,21 +444,20 @@ if __name__ == '__main__':
     num_workers = 0
     weight_decay = 0.001
     num_epochs = 20
-    learning_rate = 7e-6
-    batch_size = 24
+    learning_rate = 7e-5
+    batch_size =41
 
     delta_batch_size = 1
-    delta_learning_rate = 0.5e-6
+    delta_learning_rate = 0.5e-5
     delta_weight_decay = 0.0001
 
     best_batch_size = 0
     best_learning_rate = -1.
     best_weight_decay = -1.
 
-    count = 0
+    count_hype = 0
     iteration = 5
-    psnr_prev = 0.
-
+    psnr_prev = 35.5
 
 
 
@@ -509,21 +508,21 @@ if __name__ == '__main__':
                     print("writing to file")
                     fd.write("The current best hyperparameters are: {} {} {}\n".format(best_batch_size,best_learning_rate,best_weight_decay))
                     fd.write("PSNR is {}, SSIM is {}\n".format(psnr_new, ssim_new))
-                if (count % 3 == 0):
+                if (count_hype % 3 == 0):
                     batch_size -= delta_batch_size
-                elif (count % 3 == 1):
+                elif (count_hype % 3 == 1):
                     learning_rate -= delta_learning_rate
                 else:
                     weight_decay -= delta_weight_decay
                 psnr_prev = psnr_new
             else:
-                if (count % 3 == 0):
+                if (count_hype % 3 == 0 and batch_size <= 75):
                     batch_size += delta_batch_size
                     #if (batch_size )
-                elif (count % 3 == 1):
+                elif (count_hype % 3 == 1):
                     learning_rate += delta_learning_rate
                 else:
                     weight_decay += delta_weight_decay
 
 
-        count += 1
+            count_hype += 1

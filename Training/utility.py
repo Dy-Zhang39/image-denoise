@@ -29,7 +29,7 @@ else we will just used our previous trained model
 '''
 def load_model(train_model, learning_rate, batch_size, weight_decay):
     path = "model_parameter"+ "lr_{} batch_size_{} weight_decay{}".format(learning_rate, batch_size, weight_decay)
-    model = CNN.CBDnet()
+    model = CNN.CBDnet_2()
 
     if os.path.exists(path) and train_model == False:
         print("loading exiting model")
