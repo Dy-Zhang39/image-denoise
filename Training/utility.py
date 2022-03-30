@@ -10,9 +10,18 @@ from skimage.metrics import structural_similarity as compare_ssim #https://ourco
 
 # this file will contain utility functions
 
+
+
 # scale the tensor in [0,1]
 def normalization(imgs, labels):
-    return imgs/255, labels/255
+    min_imgs = torch.min(imgs).cpu().detach().numpy().tolist()
+    max_imgs = torch.max(imgs).cpu().detach().numpy().tolist()
+
+    min_labels = torch.min(labels).cpu().detach().numpy().tolist()
+    max_labels = torch.max(labels).cpu().detach().numpy().tolist()
+
+    return (imgs-min_imgs) / (max_imgs - min_imgs),(labels - min_labels) / (max_labels - min_labels),min_imgs,max_imgs,min_labels,max_labels
+    #return imgs/255, labels/255
 
 
 def loss_plotting(iters, losses):
@@ -38,10 +47,12 @@ def load_model(train_model, learning_rate, batch_size, weight_decay):
 
     return model
 
-def tensor_to_img(tensor):
+def tensor_to_img(tensor,min_labels,max_labels):
     tensor = tensor.cpu().detach().numpy().squeeze(axis=0)
     tensor = np.transpose(tensor, [1, 2, 0])
-    tensor = (tensor * 255).astype(np.uint8)
+
+    tensor = tensor * (max_labels - min_labels) + min_labels
+    tensor = (tensor).astype(np.uint8)
     tensor = np.clip(tensor, 0, 255)
 
     return Image.fromarray(tensor)
@@ -59,7 +70,7 @@ def save_model_output(model, use_cuda):
     # k=1
     count = 0
     for imgs, labels in iter(test_loader):
-        imgs, labels = normalization(imgs, labels)
+        imgs, labels,min_imgs,max_imgs,min_labels,max_labels = normalization(imgs, labels)
 
         #############################################
         # To Enable GPU Usage
@@ -72,9 +83,9 @@ def save_model_output(model, use_cuda):
         out = model(imgs)
 
 
-        imgs = tensor_to_img(imgs)
-        out = tensor_to_img(out)
-        labels = tensor_to_img(labels)
+        imgs = tensor_to_img(imgs,min_imgs,max_imgs)
+        out = tensor_to_img(out,min_imgs,max_imgs)
+        labels = tensor_to_img(labels,min_labels,max_labels)
 
         #dir creation
         if not os.path.exists(path):

@@ -381,10 +381,13 @@ class outconv(nn.Module):
 #end model 2
 ##########################################################################################
 
+def psnr_loss(out, label):
+    mse = torch.mean((out - label) ** 2)
+    return 20 * torch.log10(1 / torch.sqrt(mse))
 
 # the training code is adapted from tut 3a, adding data normalization and weight decay to prevent overfitting
 def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, weight_decay=0.001):
-    criterion = nn.MSELoss()
+    criterion = nn.L1Loss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     iters, losses, train_acc, val_acc = [], [], [], []
@@ -394,9 +397,10 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
     start_time = time.time()
     for epoch in range(num_epochs):
         mini_b = 0
-        for imgs, labels in iter(train_loader):
-            imgs, labels = utility.normalization(imgs, labels)
-
+        for imgs, labels in train_loader:
+            imgs, labels,_,_,_,_ = utility.normalization(imgs, labels)
+            imgs = imgs + 0.015 * torch.randn(*imgs.shape)
+            imgs = torch.clip(imgs, 0., 1.)
             #############################################
             # To Enable GPU Usage
             if use_cuda and torch.cuda.is_available():
@@ -411,6 +415,7 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
             # print(labels.shape)
 
             loss = criterion(out, labels)  # compute the total loss
+            #loss = psnr_loss(out,labels)
             loss.backward()  # backward pass (compute parameter updates)
             optimizer.step()  # make the updates for each parameter
             optimizer.zero_grad()  # a clean up step for PyTorch
@@ -433,7 +438,7 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 
     end_time = time.time()
 
-    #utility.loss_plotting(iters, losses)
+    utility.loss_plotting(iters, losses)
 
     print("Total time:  % 6.2f s  Time per Epoch: % 6.2f s " % (
         (end_time - start_time), ((end_time - start_time) / num_epochs)))
@@ -442,22 +447,22 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 if __name__ == '__main__':
     use_cuda = True
     num_workers = 0
-    weight_decay = 0.001
-    num_epochs = 20
-    learning_rate = 7e-5
-    batch_size =41
+    weight_decay = 0
+    num_epochs = 10
+    learning_rate = 6e-4
+    batch_size = 24
 
     delta_batch_size = 1
-    delta_learning_rate = 0.5e-5
+    delta_learning_rate = 5e-5
     delta_weight_decay = 0.0001
 
     best_batch_size = 0
     best_learning_rate = -1.
     best_weight_decay = -1.
 
-    count_hype = 0
-    iteration = 5
-    psnr_prev = 35.5
+    count_hype = 1
+    iteration = 15
+    psnr_prev = 0
 
 
 
@@ -497,8 +502,9 @@ if __name__ == '__main__':
                                                                                    psnr_predict_clean=False)))
             print("The Average SSIM has improved by {}".format(
                 utility.SSIM(model, count, psnr_predict_clean=True) - utility.SSIM(model, count,
-                                                                                   psnr_predict_clean=False)))
 
+                                                                        psnr_predict_clean=False)))
+            print("Current batch size, learning rate are: {}, {}\n".format(batch_size, learning_rate))
             if (psnr_new > psnr_prev):
                 best_batch_size = batch_size
                 best_learning_rate = learning_rate
@@ -516,7 +522,7 @@ if __name__ == '__main__':
                     weight_decay -= delta_weight_decay
                 psnr_prev = psnr_new
             else:
-                if (count_hype % 3 == 0 and batch_size <= 75):
+                if (count_hype % 3 == 0 and batch_size <= 25):
                     batch_size += delta_batch_size
                     #if (batch_size )
                 elif (count_hype % 3 == 1):
