@@ -1,6 +1,7 @@
 import os
 import time
 import cv2  # pip3 install opencv-contrib-python
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -138,7 +139,7 @@ class CBDnet_1(nn.Module):
         noise_level = self.fcn(x)           #get the noise level map of input x
         concat_img = torch.cat([x, noise_level], dim=1)         #combine the two tensor together as an inout to unet
         out = self.unet(concat_img) + x     #taking both noisy image and noise level map as input is helpful in generalizing the learned model to images beyond the noise model
-        return out
+        return noise_level, out
         #daniel#x = F.relu(self.conv1(x)) # (256+2*1-3)/1+1=256
         #return x
 
@@ -243,7 +244,7 @@ class CBDnet_2(nn.Module):
         concat_img = torch.cat([x, noise_level], dim=1)  # combine the two tensor together as an inout to unet
         out = self.unet(
             concat_img) + x  # taking both noisy image and noise level map as input is helpful in generalizing the learned model to images beyond the noise model
-        return out
+        return noise_level, out
         # daniel#x = F.relu(self.conv1(x)) # (256+2*1-3)/1+1=256
         # return x
 
@@ -380,6 +381,30 @@ class outconv(nn.Module):
 
 #end model 2
 ##########################################################################################
+class fixed_loss(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, out_image, gt_image, est_noise, gt_noise, if_asym):
+        l2_loss = F.mse_loss(out_image, gt_image, reduction='sum')
+
+        asym_loss = torch.mean(
+            if_asym * torch.abs(0.3 - torch.lt(gt_noise, est_noise).float()) * torch.pow(est_noise - gt_noise, 2))
+
+        h_x = est_noise.size()[2]
+        w_x = est_noise.size()[3]
+        count_h = self._tensor_size(est_noise[:, :, 1:, :])
+        count_w = self._tensor_size(est_noise[:, :, :, 1:])
+        h_tv = torch.pow((est_noise[:, :, 1:, :] - est_noise[:, :, :h_x - 1, :]), 2).sum()
+        w_tv = torch.pow((est_noise[:, :, :, 1:] - est_noise[:, :, :, :w_x - 1]), 2).sum()
+        tvloss = h_tv / count_h + w_tv / count_w
+        print("l2 loss is: {}, assym loss is: {}, tv_loss is: {}".format(l2_loss, 0.5*asym_loss, 0.05*tvloss))
+        loss = l2_loss + 0.5 * asym_loss + 0.05 * tvloss
+
+        return loss
+
+    def _tensor_size(self, t):
+        return t.size()[1] * t.size()[2] * t.size()[3]
 
 def psnr_loss(out, label):
     mse = torch.mean((out - label) ** 2)
@@ -387,7 +412,7 @@ def psnr_loss(out, label):
 
 # the training code is adapted from tut 3a, adding data normalization and weight decay to prevent overfitting
 def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, weight_decay=0.001):
-    criterion = nn.L1Loss()
+    criterion = fixed_loss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     iters, losses, train_acc, val_acc = [], [], [], []
@@ -399,7 +424,7 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
         mini_b = 0
         for imgs, labels in train_loader:
             imgs, labels,_,_,_,_ = utility.normalization(imgs, labels)
-            imgs = imgs + 0.015 * torch.randn(*imgs.shape)
+            imgs = imgs + 0.035 * torch.randn(*imgs.shape)
             imgs = torch.clip(imgs, 0., 1.)
             #############################################
             # To Enable GPU Usage
@@ -409,12 +434,17 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
             #############################################
 
             # update
-            out = model(imgs)  # forward pass
+            noise, out = model(imgs)  # forward pass
 
             # print(imgs.shape)
             # print(labels.shape)
-
-            loss = criterion(out, labels)  # compute the total loss
+            sigma_var = torch.tensor(np.zeros((3,256,256))).cuda()
+            #sigma_var = 0.0035 * torch.normal(5, 1,size=(imgs.shape))
+            #print(sigma_var)
+            #sigma_var = torch.clip(sigma_var, 0., 1.)
+            #sigma_var = sigma_var.cuda()
+            flag_var = torch.tensor(np.zeros((3, 256, 256))).cuda()
+            loss = criterion(out, labels, noise, sigma_var, flag_var)  # compute the total loss
             #loss = psnr_loss(out,labels)
             loss.backward()  # backward pass (compute parameter updates)
             optimizer.step()  # make the updates for each parameter
@@ -447,13 +477,13 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 if __name__ == '__main__':
     use_cuda = True
     num_workers = 0
-    weight_decay = 0
+    weight_decay = 0.0015
     num_epochs = 10
-    learning_rate = 6e-4
-    batch_size = 24
+    learning_rate = 0.00012
+    batch_size = 25
 
     delta_batch_size = 1
-    delta_learning_rate = 5e-5
+    delta_learning_rate = 0.5e-4
     delta_weight_decay = 0.0001
 
     best_batch_size = 0
@@ -461,7 +491,7 @@ if __name__ == '__main__':
     best_weight_decay = -1.
 
     count_hype = 1
-    iteration = 15
+    iteration = 150
     psnr_prev = 0
 
 

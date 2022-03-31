@@ -38,7 +38,7 @@ else we will just used our previous trained model
 '''
 def load_model(train_model, learning_rate, batch_size, weight_decay):
     path = "model_parameter"+ "lr_{} batch_size_{} weight_decay{}".format(learning_rate, batch_size, weight_decay)
-    model = CNN.CBDnet_2()
+    model = CNN.CBDnet_1()
 
     if os.path.exists(path) and train_model == False:
         print("loading exiting model")
@@ -80,7 +80,7 @@ def save_model_output(model, use_cuda):
         #############################################
 
         # from tensor to numpy img
-        out = model(imgs)
+        _,out = model(imgs)
 
 
         imgs = tensor_to_img(imgs,min_imgs,max_imgs)
