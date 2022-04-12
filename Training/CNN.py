@@ -14,29 +14,25 @@ import utility
 
 
 ##########################################################################################
-# should add dropout in the future
 # The following code is adapted from the following website: https://github.dev/IDKiro/CBDNet-pytorch
-
+# IEEE citation:
+# GitHub web editor. [Online]. Available: https://github.dev/IDKiro/CBDNet-pytorch. [Accessed: 12-Apr-2022].
+# We have created three models with different complexity, adapting the code in the above reference
 ##########################################################################################
 # model 0 low complexity
 #
 class CBDnet_0(nn.Module):
-    # please implement CBDnet here, this is just return the same size image
     def __init__(self):
         super(CBDnet_0, self).__init__()
         #input image is 3 * 256 * 256
         self.fcn = FCN_0()            #CNN_E: takes an noisy observtion y and output esitmate the noise level map
         self.unet = UNet_0()          #UNet: performs image denoise
 
-        #daniel#self.conv1 = nn.Conv2d(3, 3, 3, padding=1)
-
     def forward(self, x):
         noise_level = self.fcn(x)           #get the noise level map of input x
         concat_img = torch.cat([x, noise_level], dim=1)         #combine the two tensor together as an inout to unet
         out = self.unet(concat_img) + x     #taking both noisy image and noise level map as input is helpful in generalizing the learned model to images beyond the noise model
         return out
-        #daniel#x = F.relu(self.conv1(x)) # (256+2*1-3)/1+1=256
-        #return x
 
 #FCN class estimate noise level of the input signal
 class FCN_0(nn.Module):  # CNN_E
@@ -124,6 +120,9 @@ class UNet_0(nn.Module):
 
 ##########################################################################################
 # model 1 moderate complexity
+# The following code is adapted from the following website: https://github.dev/IDKiro/CBDNet-pytorch
+# IEEE citation:
+# GitHub web editor. [Online]. Available: https://github.dev/IDKiro/CBDNet-pytorch. [Accessed: 12-Apr-2022].
 #
 class CBDnet_1(nn.Module):
     # please implement CBDnet here, this is just return the same size image
@@ -229,6 +228,9 @@ class UNet_1(nn.Module):
 
 ##########################################################################################
 #model 2 high complexity
+# The following code is adapted from the following website: https://github.dev/IDKiro/CBDNet-pytorch
+# IEEE citation:
+# GitHub web editor. [Online]. Available: https://github.dev/IDKiro/CBDNet-pytorch. [Accessed: 12-Apr-2022].
 class CBDnet_2(nn.Module):
     # please implement CBDnet here, this is just return the same size image
     def __init__(self):
@@ -333,8 +335,11 @@ class UNet_2(nn.Module):
 
 
 ##########################################################################################
-# Below are the hpler function for UNet
+# Below are the helper functions for UNet
 # this class implements a signal conv2d layer with relu activation
+# The following code is adapted from the following website: https://github.dev/IDKiro/CBDNet-pytorch
+# IEEE citation:
+# GitHub web editor. [Online]. Available: https://github.dev/IDKiro/CBDNet-pytorch. [Accessed: 12-Apr-2022].
 class single_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(single_conv, self).__init__()
@@ -345,7 +350,6 @@ class single_conv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
-
 
 # this class doing the transpose convolution (can be view as deconvolution) visiualizetion of the opration can be
 # found here: https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md
@@ -380,39 +384,11 @@ class outconv(nn.Module):
         return x
 
 #end model 2
-##########################################################################################
-class fixed_loss(nn.Module):
-    def __init__(self):
-        super().__init__()
 
-    def forward(self, out_image, gt_image, est_noise, gt_noise, if_asym):
-        l2_loss = F.mse_loss(out_image, gt_image, reduction='sum')
-
-        asym_loss = torch.mean(
-            if_asym * torch.abs(0.3 - torch.lt(gt_noise, est_noise).float()) * torch.pow(est_noise - gt_noise, 2))
-
-        h_x = est_noise.size()[2]
-        w_x = est_noise.size()[3]
-        count_h = self._tensor_size(est_noise[:, :, 1:, :])
-        count_w = self._tensor_size(est_noise[:, :, :, 1:])
-        h_tv = torch.pow((est_noise[:, :, 1:, :] - est_noise[:, :, :h_x - 1, :]), 2).sum()
-        w_tv = torch.pow((est_noise[:, :, :, 1:] - est_noise[:, :, :, :w_x - 1]), 2).sum()
-        tvloss = h_tv / count_h + w_tv / count_w
-        print("l2 loss is: {}, assym loss is: {}, tv_loss is: {}".format(l2_loss, 0.5*asym_loss, 0.05*tvloss))
-        loss = l2_loss + 0.5 * asym_loss + 0.05 * tvloss
-
-        return loss
-
-    def _tensor_size(self, t):
-        return t.size()[1] * t.size()[2] * t.size()[3]
-
-def psnr_loss(out, label):
-    mse = torch.mean((out - label) ** 2)
-    return 20 * torch.log10(1 / torch.sqrt(mse))
 
 # the training code is adapted from tut 3a, adding data normalization and weight decay to prevent overfitting
 def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, weight_decay=0.001):
-    criterion = fixed_loss()
+    criterion = nn.MSELoss(reduction='sum')
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
     iters, losses, train_acc, val_acc = [], [], [], []
@@ -435,17 +411,7 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
 
             # update
             noise, out = model(imgs)  # forward pass
-
-            # print(imgs.shape)
-            # print(labels.shape)
-            sigma_var = torch.tensor(np.zeros((3,256,256))).cuda()
-            #sigma_var = 0.0035 * torch.normal(5, 1,size=(imgs.shape))
-            #print(sigma_var)
-            #sigma_var = torch.clip(sigma_var, 0., 1.)
-            #sigma_var = sigma_var.cuda()
-            flag_var = torch.tensor(np.zeros((3, 256, 256))).cuda()
-            loss = criterion(out, labels, noise, sigma_var, flag_var)  # compute the total loss
-            #loss = psnr_loss(out,labels)
+            loss = criterion(out, labels)  # compute the total loss
             loss.backward()  # backward pass (compute parameter updates)
             optimizer.step()  # make the updates for each parameter
             optimizer.zero_grad()  # a clean up step for PyTorch
@@ -490,6 +456,7 @@ if __name__ == '__main__':
     best_learning_rate = -1.
     best_weight_decay = -1.
 
+    # auto training
     count_hype = 1
     iteration = 150
     psnr_prev = 0
@@ -535,13 +502,14 @@ if __name__ == '__main__':
 
                                                                         psnr_predict_clean=False)))
             print("Current batch size, learning rate are: {}, {}\n".format(batch_size, learning_rate))
+
+            # auto training
             if (psnr_new > psnr_prev):
                 best_batch_size = batch_size
                 best_learning_rate = learning_rate
                 best_weight_decay = weight_decay
 
                 with open("log.txt",'a') as fd:
-                    print("writing to file")
                     fd.write("The current best hyperparameters are: {} {} {}\n".format(best_batch_size,best_learning_rate,best_weight_decay))
                     fd.write("PSNR is {}, SSIM is {}\n".format(psnr_new, ssim_new))
                 if (count_hype % 3 == 0):
@@ -554,7 +522,6 @@ if __name__ == '__main__':
             else:
                 if (count_hype % 3 == 0 and batch_size <= 25):
                     batch_size += delta_batch_size
-                    #if (batch_size )
                 elif (count_hype % 3 == 1):
                     learning_rate += delta_learning_rate
                 else:
