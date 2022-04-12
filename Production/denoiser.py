@@ -12,6 +12,7 @@ import numpy as np
 import torch
 import torchvision.transforms as transforms
 import utility
+from skimage.transform import resize
 
 PATCH_SIZE = 256
 
@@ -31,13 +32,17 @@ filename = askopenfilename(filetypes=((("Images"), "*.jpg"), (("All files"), "*.
 #model = autoencoder.Autoencoder_cnn()
 #model.load_state_dict(torch.load("../Baseline/best parameter"))
 model = CNN.CBDnet_1()
-model.load_state_dict(torch.load("../Training/model_parameterlr_1e-05 batch_size_9 weight_decay0.002_best"))
-
+#model.load_state_dict(torch.load("../Training/model_parameter_epoch21_CBDnet_1_lr_0.0002 batch_size_8 weight_decay0.001_bestsum"))
+model.load_state_dict(torch.load("../Training/model_parameter_epoch44_CBDnet_1_lr_0.0002 batch_size_8 weight_decay0.001_best_sum"))
 if (use_cuda):
     model.cuda()
 
 
 image_np = plt.imread(filename)
+image_np = image_np / 255
+#print(image_np.dtype)
+#image_np = resize(image_np, (int(image_np.shape[0]/3), int(image_np.shape[1]/3)), anti_aliasing = True)
+image_np = image_np.astype("float32")
 print("Original image shape: ", image_np.shape)
 
 # zero-pad the image so the height and width are the next multiple of 256
@@ -68,6 +73,9 @@ for x in range(num_patch_width):
         patch = image_np[y * PATCH_SIZE : (y+1) * PATCH_SIZE,
                                  x * PATCH_SIZE : (x+1) * PATCH_SIZE, :]
 
+        #plt.imshow(patch)
+        #plt.show()
+
         patch = transform(patch)
         if (use_cuda):
             patch = patch.cuda()
@@ -77,7 +85,10 @@ for x in range(num_patch_width):
 
         # Pytorch's output is CHW, but we want to turn it into HWC for numpy
         denoised_patches[x, y] = tensor_img_to_np(patch)
+        #plt.imshow(denoised_patches[x, y])
+        #plt.show()
         print("Progress: {}%".format(100*(current_patch_idx / total_patches)))
+        print(patch.shape)
 
 
 # assemble all patches together
@@ -85,7 +96,7 @@ denoised_image = np.zeros((desired_height, desired_width, 3))
 for x in range(num_patch_width):
     for y in range(num_patch_height):
         denoised_image[y * PATCH_SIZE : (y+1) * PATCH_SIZE,
-                     x * PATCH_SIZE : (x+1) * PATCH_SIZE] = denoised_patches[x][y]
+                     x * PATCH_SIZE : (x+1) * PATCH_SIZE] = denoised_patches[x, y]
 
 
 # crop out the added padding
@@ -97,5 +108,11 @@ elif (pad_right == 0):
     denoised_image = denoised_image[pad_top:-pad_bottom, pad_left:, :]
 else:
     denoised_image = denoised_image[pad_top:-pad_bottom, pad_left:-pad_right, :]
-plt.imshow(denoised_image)
-plt.show()
+
+print("Denoised image shape: ", denoised_image.shape)
+#plt.imshow(denoised_image)
+#plt.show()
+
+save_path = filename[:filename.rfind("/")] + "/result.jpg"
+print("Done, result saved to {}".format(save_path))
+plt.imsave(save_path, denoised_image)
