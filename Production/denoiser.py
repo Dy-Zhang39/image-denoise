@@ -82,13 +82,11 @@ for x in range(num_patch_width):
         #patch = patch.view(PATCH_SIZE, PATCH_SIZE, 3)
         patch = torch.unsqueeze(patch, 0)
         patch = model(patch)
-
         # Pytorch's output is CHW, but we want to turn it into HWC for numpy
         denoised_patches[x, y] = tensor_img_to_np(patch)
         #plt.imshow(denoised_patches[x, y])
         #plt.show()
         print("Progress: {}%".format(100*(current_patch_idx / total_patches)))
-        print(patch.shape)
 
 
 # assemble all patches together

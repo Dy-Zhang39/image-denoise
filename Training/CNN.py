@@ -138,7 +138,7 @@ class CBDnet_1(nn.Module):
         noise_level = self.fcn(x)           #get the noise level map of input x
         concat_img = torch.cat([x, noise_level], dim=1)         #combine the two tensor together as an inout to unet
         out = self.unet(concat_img) + x     #taking both noisy image and noise level map as input is helpful in generalizing the learned model to images beyond the noise model
-        return noise_level, out
+        return out
         #daniel#x = F.relu(self.conv1(x)) # (256+2*1-3)/1+1=256
         #return x
 
@@ -246,7 +246,7 @@ class CBDnet_2(nn.Module):
         concat_img = torch.cat([x, noise_level], dim=1)  # combine the two tensor together as an inout to unet
         out = self.unet(
             concat_img) + x  # taking both noisy image and noise level map as input is helpful in generalizing the learned model to images beyond the noise model
-        return noise_level, out
+        return out
         # daniel#x = F.relu(self.conv1(x)) # (256+2*1-3)/1+1=256
         # return x
 
@@ -410,7 +410,7 @@ def train(model, batch_size=20, num_epochs=1, learning_rate=0.01, train_type=0, 
             #############################################
 
             # update
-            noise, out = model(imgs)  # forward pass
+            out = model(imgs)  # forward pass
             loss = criterion(out, labels)  # compute the total loss
             loss.backward()  # backward pass (compute parameter updates)
             optimizer.step()  # make the updates for each parameter
