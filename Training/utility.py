@@ -12,7 +12,13 @@ from skimage.metrics import structural_similarity as compare_ssim #https://ourco
 
 # scale the tensor in [0,1]
 def normalization(imgs, labels):
-    return imgs/255, labels/255
+    min_imgs = torch.min(imgs).cpu().detach().numpy().tolist()
+    max_imgs = torch.max(imgs).cpu().detach().numpy().tolist()
+
+    min_labels = torch.min(labels).cpu().detach().numpy().tolist()
+    max_labels = torch.max(labels).cpu().detach().numpy().tolist()
+
+    return (imgs-min_imgs) / (max_imgs - min_imgs),(labels - min_labels) / (max_labels - min_labels),min_imgs,max_imgs,min_labels,max_labels
 
 
 def loss_plotting(iters, losses):
@@ -29,7 +35,7 @@ else we will just used our previous trained model
 '''
 def load_model(train_model, learning_rate, batch_size, weight_decay):
     path = "model_parameter"+ "lr_{} batch_size_{} weight_decay{}".format(learning_rate, batch_size, weight_decay)
-    model = CNN.CBDnet()
+    model = CNN.CBDnet_1()
 
     if os.path.exists(path) and train_model == False:
         print("loading exiting model")
@@ -38,10 +44,12 @@ def load_model(train_model, learning_rate, batch_size, weight_decay):
 
     return model
 
-def tensor_to_img(tensor):
+def tensor_to_img(tensor,min_labels,max_labels):
     tensor = tensor.cpu().detach().numpy().squeeze(axis=0)
     tensor = np.transpose(tensor, [1, 2, 0])
-    tensor = (tensor * 255).astype(np.uint8)
+
+    tensor = tensor * (max_labels - min_labels) + min_labels
+    tensor = (tensor).astype(np.uint8)
     tensor = np.clip(tensor, 0, 255)
 
     return Image.fromarray(tensor)
@@ -59,7 +67,7 @@ def save_model_output(model, use_cuda):
     # k=1
     count = 0
     for imgs, labels in iter(test_loader):
-        imgs, labels = normalization(imgs, labels)
+        imgs, labels,min_imgs,max_imgs,min_labels,max_labels = normalization(imgs, labels)
 
         #############################################
         # To Enable GPU Usage
@@ -69,12 +77,12 @@ def save_model_output(model, use_cuda):
         #############################################
 
         # from tensor to numpy img
-        out = model(imgs)
+        _,out = model(imgs)
 
 
-        imgs = tensor_to_img(imgs)
-        out = tensor_to_img(out)
-        labels = tensor_to_img(labels)
+        imgs = tensor_to_img(imgs,min_imgs,max_imgs)
+        out = tensor_to_img(out,min_imgs,max_imgs)
+        labels = tensor_to_img(labels,min_labels,max_labels)
 
         #dir creation
         if not os.path.exists(path):
@@ -99,6 +107,10 @@ def save_model_output(model, use_cuda):
 Calculate average PSNR among all testset data
 psnr_predict_clean = true: its the PSNR between the prediction of our model and clean img
 psnr_predict_clean = false: its the PSNR between the dirty and clean img
+information of how to use library PSNR can be found in here
+https://dsp.stackexchange.com/questions/38065/peak-signal-to-noise-ratio-psnr-in-python-for-an-image
+IEEE citation:
+Sudip DasSudip Das                    19111 gold badge11 silver badge44 bronze badges, Amir KhakpourAmir Khakpour                    9111 silver badge11 bronze badge, Himanshu TyagiHimanshu Tyagi                    8111 silver badge22 bronze badges, Shuai YanShuai Yan                    5111 silver badge11 bronze badge, and Dan BoschenDan Boschen                    33.7k22 gold badges3434 silver badges9393 bronze badges, “Peak signal to noise ratio (PSNR) in python for an image,” Signal Processing Stack Exchange, 01-Dec-1964. [Online]. Available: https://dsp.stackexchange.com/questions/38065/peak-signal-to-noise-ratio-psnr-in-python-for-an-image. [Accessed: 12-Apr-2022]. 
 '''
 def PSNR(model, count, psnr_predict_clean):
     path = "./output/"
@@ -116,13 +128,17 @@ def PSNR(model, count, psnr_predict_clean):
 
 '''
 Calculate average SSIM among all testset data
-psnr_predict_clean = true: its the PSNR between the prediction of our model and clean img
-psnr_predict_clean = false: its the PSNR between the dirty and clean img
+ssim_predict_clean = true: its the SSIM between the prediction of our model and clean img
+ssim_predict_clean = false: its the SSIM between the dirty and clean img
+information of how to use library call to calcluate SSIM can be found here
+https://pyimagesearch.com/2017/06/19/image-difference-with-opencv-and-python/
+IEEE citation:
+Linus, A. Rosebrock, Kushi, Giri, Mourad, L. Loja, R. Patel, J. Cohen, S. Barnes, Simon, Pavan, Andreas, Bill, Vijeta, Marc, Harrison, Pranali, y0c0, S. Leach, LianMing, Andrew, P. Srinivasan, Anwar, Yitzhak, Ambika, Erika, Manu, Vin, Pochao, P. K, M. Prasad, Ilja, Bilal, Anh, Gandhirajan, A. Bhalla, Vinay, R. V.K, Ravikumar, Nihel, Ju, Esteban, Sudheendra, S. R, Ali.K, Nut, Alex, Coby, S. Kunkel, David, D. agarwal, Viktor, IndhraG, Manbodh, heetak Chung, Parisa, Parisa, K. Mukherjee, D. Mike, Midun, Quinn, Alex, Kiran, I. Ahmad, Rohit, Ashley, S. Bhansali, N. Pham, D. Suprianto, S. H, J. Johnsen, S. Sturges, Zheng, Yaswanth, Ali, Sholi, Ash, Anirudh, M. Jha, M. Maheshwari, N. Jain, Shahane, Mracv, C. Greco, Andrei, Tomek, B. Agarwal, Pavan, Ravi, S. V. S, Chin, Raj, J. J, Mario, Frank, Denis, Barry, S. Kotgire, and Javier, “Image difference with opencv and python,” PyImageSearch, 07-Jul-2021. [Online]. Available: https://pyimagesearch.com/2017/06/19/image-difference-with-opencv-and-python/. [Accessed: 12-Apr-2022]. 
 '''
 def SSIM(model, count, psnr_predict_clean):
     path = "./output/"
     ssim = []
-    # https://pyimagesearch.com/2017/06/19/image-difference-with-opencv-and-python/
+
     for i in range(count):
         if (psnr_predict_clean):
             img1 = cv2.imread("{}out/test{}.jpg".format(path, i))
